@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Завдання 1</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f8f8;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        .color-box {
+            display: inline-block;
+            width: 200px;
+            height: 150px;
+            margin: 10px;
+            position: relative;
+            border-radius: 5px;
+        }
+        .color-box span {
+            position: absolute;
+            width: 80%;
+            height: 60%;
+            background-color: rgba(255, 255, 255, 0.8);
+            color: black;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px;
+            border-radius: 5px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .error {
+            color: red;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Створи свій колір</h1>
+    <div class="form-group">
+        <label for="colorName">Колір:</label>
+        <input type="text" id="colorName">
+        <div class="error" id="nameError"></div>
+    </div>
+    <div class="form-group">
+        <label for="colorType">Type:</label>
+        <select id="colorType">
+            <option value="RGB">RGB</option>
+            <option value="RGBA">RGBA</option>
+            <option value="HEX">HEX</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="colorCode">Код:</label>
+        <input type="text" id="colorCode">
+        <div class="error" id="codeError"></div>
+    </div>
+    <button id="saveBtn">Зберегти</button>
+
+    <h2>Всі ваші кольори</h2>
+    <div id="colorList"></div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const colorNameInput = document.getElementById('colorName');
+        const colorTypeInput = document.getElementById('colorType');
+        const colorCodeInput = document.getElementById('colorCode');
+        const saveBtn = document.getElementById('saveBtn');
+        const colorList = document.getElementById('colorList');
+        const nameError = document.getElementById('nameError');
+        const codeError = document.getElementById('codeError');
+
+        const COLORS_COOKIE = 'colors';
+        const MAX_COOKIE_AGE = 3 * 60 * 60;
+
+        function getColorsFromCookie() {
+            const cookieValue = document.cookie.split('; ').find(row => row.startsWith(COLORS_COOKIE));
+            return cookieValue ? JSON.parse(decodeURIComponent(cookieValue.split('=')[1])) : [];
+        }
+
+        function setColorsToCookie(colors) {
+            document.cookie = `${COLORS_COOKIE}=${encodeURIComponent(JSON.stringify(colors))}; max-age=${MAX_COOKIE_AGE}; path=/`;
+        }
+
+        function renderColors(colors) {
+            colorList.innerHTML = '';
+            colors.forEach(color => {
+                const colorBox = document.createElement('div');
+                colorBox.className = 'color-box';
+                if (color.type === 'RGB' || color.type === 'RGBA') {
+                    colorBox.style.backgroundColor = `rgb(${color.code})`;
+                } else {
+                    colorBox.style.backgroundColor = color.code;
+                }
+                const colorText = document.createElement('span');
+                colorText.innerHTML = `<div>${color.name}</div><div>${color.type}</div><div>${color.code}</div>`;
+                colorBox.appendChild(colorText);
+                colorList.appendChild(colorBox);
+            });
+        }
+
+        function validateName(name, colors) {
+            if (!name) {
+                return 'Необхідно вказати ім\'я.';
+            }
+            if (/[^a-zA-Z]/.test(name)) {
+                return 'Назва кольору може містити лише літери.';
+            }
+            if (colors.some(color => color.name.toLowerCase() === name.toLowerCase())) {
+                return 'Назва кольору має бути унікальною.';
+            }
+            return '';
+        }
+
+        function validateCode(type, code) {
+            let regex;
+            let example;
+            switch (type) {
+                case 'RGB':
+                    regex = /^(\d{1,3}),\s?(\d{1,3}),\s?(\d{1,3})$/;
+                    example = 'Приклад: 255, 255, 255';
+                    break;
+                case 'RGBA':
+                    regex = /^(\d{1,3}),\s?(\d{1,3}),\s?(\д{1,3}),\s?(0|1|0?\.\д+)$/;
+                    example = 'Приклад: 255, 255, 255, 0.5';
+                    break;
+                case 'HEX':
+                    regex = /^#[0-9A-Fa-f]{6}$/;
+                    example = 'Приклад: #FFFFFF';
+                    break;
+            }
+            return regex && regex.test(code) ? '' : `Такого кольору немає. ${example}`;
+        }
+
+        function saveColor() {
+            const name = colorNameInput.value.trim();
+            const type = colorTypeInput.value;
+            const code = colorCodeInput.value.trim();
+
+            const colors = getColorsFromCookie();
+
+            const nameValidationError = validateName(name, colors);
+            const codeValidationError = validateCode(type, code);
+
+            if (nameValidationError || codeValidationError) {
+                nameError.innerText = nameValidationError;
+                codeError.innerText = codeValidationError;
+                return;
+            }
+
+            colors.push({ name, type, code });
+            setColorsToCookie(colors);
+            renderColors(colors);
+
+            colorNameInput.value = '';
+            colorCodeInput.value = '';
+            nameError.innerText = '';
+            codeError.innerText = '';
+        }
+
+        saveBtn.addEventListener('click', saveColor);
+
+        renderColors(getColorsFromCookie());
+    });
+
+</script>
+</body>
+</html>
